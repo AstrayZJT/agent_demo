@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: minimal-agent-springboot
+
+server:
+  port: 8080
+
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${OPENAI_API_KEY:}
+      model-name: qwen-plus
+      log-requests: true
+      log-responses: true
+    embedding-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${OPENAI_API_KEY:}
+      model-name: text-embedding-v4
+
+agent:
+  search:
+    max-results: ${AGENT_SEARCH_MAX_RESULTS:5}
+  webpage:
+    max-characters: ${AGENT_WEBPAGE_MAX_CHARACTERS:8000}
+
+rag:
+  knowledge-path: knowledge
