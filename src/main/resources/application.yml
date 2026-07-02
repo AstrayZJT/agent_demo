@@ -1,6 +1,17 @@
 spring:
   application:
     name: minimal-agent-springboot
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:agentdemo}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
 
 server:
   port: 8080

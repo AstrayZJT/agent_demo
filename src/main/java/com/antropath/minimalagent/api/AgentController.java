@@ -19,6 +19,6 @@ public class AgentController {
 
     @PostMapping("/run")
     public AgentResponse run(@Valid @RequestBody AgentRequest request) {
-        return new AgentResponse(agentService.answer(request.task()));
+        return new AgentResponse(agentService.answer(request));
     }
 }

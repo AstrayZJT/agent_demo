@@ -1,6 +1,8 @@
 package com.antropath.minimalagent.agent;
 
+import com.antropath.minimalagent.api.AgentRequest;
+
 public interface Assistant {
 
-    String chat(String task);
+    String chat(AgentRequest request);
 }

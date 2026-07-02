@@ -1,9 +1,12 @@
 package com.antropath.minimalagent.agent;
 
+import com.antropath.minimalagent.api.AgentRequest;
+import com.antropath.minimalagent.memory.ConversationMemoryService;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
@@ -85,7 +88,8 @@ public class KnowledgeBaseConfig {
     }
 
     @Bean
-    public Assistant assistant(ContentRetriever knowledgeContentRetriever) {
+    public Assistant assistant(ContentRetriever knowledgeContentRetriever,
+                                ConversationMemoryService conversationMemoryService) {
         OpenAiChatModel chatModel = OpenAiChatModel.builder()
                 .baseUrl(chatBaseUrl)
                 .apiKey(chatApiKey)
@@ -97,6 +101,37 @@ public class KnowledgeBaseConfig {
         return AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .contentRetriever(knowledgeContentRetriever)
+                .systemMessageProviderWithContext(context -> {
+                    AgentRequest request = extractRequest(context);
+                    String memoryContext = conversationMemoryService.buildMemoryContext(request.userId());
+                    return """
+                            你是一个中文学习助手，同时支持知识库问答和用户记忆。
+                            1. 优先根据检索到的知识库内容回答。
+                            2. 同一个 userId 的历史对话记忆如下：
+                            %s
+                            3. 如果知识库中没有相关资料，请明确说明。
+                            4. 回答尽量准确、自然、简洁。
+                            """.formatted(memoryContext);
+                })
+                .userMessageProvider(input -> {
+                    if (input instanceof AgentRequest request) {
+                        return request.task();
+                    }
+                    if (input instanceof String task) {
+                        return task;
+                    }
+                    return String.valueOf(input);
+                })
                 .build();
+    }
+
+    private static AgentRequest extractRequest(InvocationContext context) {
+        if (context != null && !context.methodArguments().isEmpty()) {
+            Object argument = context.methodArguments().get(0);
+            if (argument instanceof AgentRequest request) {
+                return request;
+            }
+        }
+        throw new IllegalStateException("Unable to resolve AgentRequest from invocation context");
     }
 }

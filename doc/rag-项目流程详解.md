@@ -388,3 +388,84 @@ chat model 基于片段生成回答
 3. [AgentController.java](C:\Users\86187\Desktop\老桌面\学习笔记\Java学习\大三暑假\agent_demo\springboot-refactor\src\main\java\com\antropath\minimalagent\api\AgentController.java:10)
 4. [application.yml](C:\Users\86187\Desktop\老桌面\学习笔记\Java学习\大三暑假\agent_demo\springboot-refactor\src\main\resources\application.yml:8)
 
+---
+
+## 14. 为什么模型看到的是检索到的文本，而不是向量
+
+这里有一个很容易混淆的点：RAG 里虽然先做了向量检索，但**真正交给大模型的不是向量本身，而是检索到的原文片段**。
+
+### 14.1 向量只负责“找”
+
+在这段代码里：
+
+```java
+return EmbeddingStoreContentRetriever.builder()
+        .embeddingStore(embeddingStore)
+        .embeddingModel(embeddingModel)
+        .maxResults(4)
+        .minScore(0.55)
+        .build();
+```
+
+向量的作用是：
+
+- 把用户问题转成向量
+- 在 `embeddingStore` 里找最相似的片段
+- 取回这些片段对应的原文
+
+也就是说，向量是“检索阶段”的工具，不是“回答阶段”的内容。
+
+### 14.2 真正传给模型的是文本
+
+在这段代码里：
+
+```java
+return AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .contentRetriever(knowledgeContentRetriever)
+        .build();
+```
+
+`AiServices` 会先调用 `contentRetriever`，拿到相关片段，再把这些片段放进模型上下文中。
+
+所以模型最终看到的是：
+
+- 用户问题
+- 检索到的文本片段
+
+不是一串向量数字。
+
+### 14.3 为什么没有“只返回向量内容”这种说法
+
+因为向量本身不能直接给人类阅读，也不能直接当答案。
+
+向量只是数学表示，用来做相似度比较。  
+真正有意义的是：
+
+- 片段原文
+- 片段所在的知识文件
+- 片段命中的上下文
+
+所以你可以这样理解：
+
+```text
+文本 -> 向量 -> 检索 -> 文本 -> 模型回答
+```
+
+不是：
+
+```text
+文本 -> 向量 -> 模型直接读向量回答
+```
+
+### 14.4 当前“知识库优先”的原因
+
+当前这个项目里，系统提示词和检索策略都偏向知识库优先。
+
+所以当知识库里没有足够内容时，模型会倾向于说：
+
+- 没有相关信息
+- 资料中没有提到
+- 根据当前知识库无法回答
+
+这就是你看到它不像通用聊天模型那样随便展开的原因。
