@@ -17,6 +17,10 @@ public class ConversationMemoryService {
 
     @Transactional(readOnly = true)
     public String buildMemoryContext(String userId) {
+        if ("-1".equals(userId)) {
+            return "匿名用户不保存历史对话记忆。";
+        }
+
         List<UserConversationMessage> recentMessages = repository.findTop12ByUserIdOrderByCreatedAtDesc(userId);
         if (recentMessages.isEmpty()) {
             return "暂无历史对话记忆。";
@@ -34,6 +38,9 @@ public class ConversationMemoryService {
 
     @Transactional
     public void recordExchange(String userId, String task, String answer) {
+        if ("-1".equals(userId)) {
+            return;
+        }
         repository.save(new UserConversationMessage(userId, "用户", task));
         repository.save(new UserConversationMessage(userId, "助手", answer));
     }

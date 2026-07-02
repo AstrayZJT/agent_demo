@@ -1,8 +1,9 @@
 package com.antropath.minimalagent.agent;
 
-import com.antropath.minimalagent.api.AgentRequest;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.UserMessage;
 
 public interface Assistant {
 
-    String chat(AgentRequest request);
+    String chat(@MemoryId String userId, @UserMessage String task);
 }
