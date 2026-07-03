@@ -1,6 +1,8 @@
 package com.antropath.minimalagent.agent;
 
 import com.antropath.minimalagent.memory.ConversationMemoryService;
+import com.antropath.minimalagent.guardrail.PromptInjectionInputGuardrail;
+import com.antropath.minimalagent.guardrail.ResponseSanityOutputGuardrail;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -12,6 +14,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
@@ -102,6 +105,13 @@ public class KnowledgeBaseConfig {
     }
 
     @Bean
+    public OutputGuardrailsConfig outputGuardrailsConfig() {
+        return OutputGuardrailsConfig.builder()
+                .maxRetries(1)
+                .build();
+    }
+
+    @Bean
     public ChatMemoryProvider chatMemoryProvider() {
         return memoryId -> "-1".equals(String.valueOf(memoryId))
                 ? new EphemeralChatMemory(memoryId)
@@ -112,11 +122,17 @@ public class KnowledgeBaseConfig {
     public Assistant ragAssistant(OpenAiChatModel chatModel,
                                   ContentRetriever knowledgeContentRetriever,
                                   ChatMemoryProvider chatMemoryProvider,
+                                  PromptInjectionInputGuardrail promptInjectionInputGuardrail,
+                                  ResponseSanityOutputGuardrail responseSanityOutputGuardrail,
+                                  OutputGuardrailsConfig outputGuardrailsConfig,
                                   ConversationMemoryService conversationMemoryService) {
         return AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(chatMemoryProvider)
                 .contentRetriever(knowledgeContentRetriever)
+                .inputGuardrails(promptInjectionInputGuardrail)
+                .outputGuardrails(responseSanityOutputGuardrail)
+                .outputGuardrailsConfig(outputGuardrailsConfig)
                 .systemMessageProvider(userId -> buildRagSystemMessage((String) userId, conversationMemoryService))
                 .build();
     }
@@ -125,11 +141,17 @@ public class KnowledgeBaseConfig {
     public Assistant toolAssistant(OpenAiChatModel chatModel,
                                    MinimalAgentTools minimalAgentTools,
                                    ChatMemoryProvider chatMemoryProvider,
+                                   PromptInjectionInputGuardrail promptInjectionInputGuardrail,
+                                   ResponseSanityOutputGuardrail responseSanityOutputGuardrail,
+                                   OutputGuardrailsConfig outputGuardrailsConfig,
                                    ConversationMemoryService conversationMemoryService) {
         return AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(chatMemoryProvider)
                 .tools(minimalAgentTools)
+                .inputGuardrails(promptInjectionInputGuardrail)
+                .outputGuardrails(responseSanityOutputGuardrail)
+                .outputGuardrailsConfig(outputGuardrailsConfig)
                 .systemMessageProvider(userId -> buildToolSystemMessage((String) userId, conversationMemoryService))
                 .build();
     }
