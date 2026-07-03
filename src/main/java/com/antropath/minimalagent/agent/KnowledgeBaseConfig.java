@@ -3,9 +3,6 @@ package com.antropath.minimalagent.agent;
 import com.antropath.minimalagent.memory.ConversationMemoryService;
 import com.antropath.minimalagent.guardrail.PromptInjectionInputGuardrail;
 import com.antropath.minimalagent.guardrail.ResponseSanityOutputGuardrail;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
-import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -18,22 +15,16 @@ import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Configuration
 public class KnowledgeBaseConfig {
-
-    @Value("${rag.knowledge-path:knowledge}")
-    private String knowledgePath;
 
     @Value("${rag.pgvector.host:localhost}")
     private String pgvectorHost;
@@ -105,18 +96,6 @@ public class KnowledgeBaseConfig {
                 .dimension(embeddingModel.dimension())
                 .createTable(true)
                 .build();
-        Path path = Path.of(knowledgePath);
-        if (Files.exists(path)) {
-            List<Document> documents = FileSystemDocumentLoader.loadDocumentsRecursively(path);
-            if (!documents.isEmpty()) {
-                EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                        .documentSplitter(DocumentSplitters.recursive(700, 100))
-                        .embeddingModel(embeddingModel)
-                        .embeddingStore(store)
-                        .build();
-                ingestor.ingest(documents);
-            }
-        }
         return store;
     }
 

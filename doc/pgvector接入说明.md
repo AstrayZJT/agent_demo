@@ -1,6 +1,6 @@
 # pgvector 接入说明
 
-这份说明记录本项目把 RAG 从内存向量库切到 PostgreSQL + pgvector 的过程。
+这份说明记录本项目把 RAG 从内存向量库切到本机 PostgreSQL + pgvector 的过程。
 
 ---
 
@@ -25,12 +25,12 @@
 
 ## 2. 本次用到的环境
 
-- PostgreSQL 18
-- pgvector Docker 镜像：`pgvector/pgvector:pg18`
-- 端口：`5433`
-- 数据库名：`agentdemo_rag`
+- 本机 PostgreSQL 18
+- `vector` 扩展已安装到本机 PostgreSQL
+- 端口：`5432`
+- 数据库名：`agentdemo`
 
-当前容器已经启动，并且 `vector` 扩展已经启用。
+当前本机数据库已经启用 `vector` 扩展。
 
 ---
 
@@ -59,7 +59,7 @@
 
 - `PgVectorEmbeddingStore`
 
-这样启动时会把 `knowledge/` 里的内容切片后写进 pgvector 表里。
+现在启动时会把 `knowledge/` 里的内容做增量同步后写进 pgvector 表里。
 
 ---
 
@@ -80,21 +80,13 @@ knowledge/ 文档
 
 ## 5. 本机怎么启动
 
-如果你要自己重启这个 RAG 库，可以用下面的容器命令：
+你不需要再单独起 Docker 向量库了。  
+只要本机 PostgreSQL 服务在跑，并且数据库里已经创建了 `vector` 扩展，就可以直接用。
 
-```bash
-docker run -d --name agentdemo-pgvector -p 5433:5432 \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=你的密码 \
-  -e POSTGRES_DB=agentdemo_rag \
-  pgvector/pgvector:pg18
-```
+如果还没创建扩展，可以执行：
 
-启动后再执行：
-
-```bash
-docker exec -e PGPASSWORD=你的密码 agentdemo-pgvector \
-  psql -U postgres -d agentdemo_rag -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
 ---
@@ -103,8 +95,8 @@ docker exec -e PGPASSWORD=你的密码 agentdemo-pgvector \
 
 默认情况下，这些值已经写进项目：
 
-- `localhost:5433`
-- `agentdemo_rag`
+- `localhost:5432`
+- `agentdemo`
 - `postgres`
 
 如果你后面想换成自己的数据库，只要改环境变量即可。
@@ -115,9 +107,9 @@ docker exec -e PGPASSWORD=你的密码 agentdemo-pgvector \
 
 你可以看这几个信号：
 
-- 容器能启动
+- 本机 PostgreSQL 服务能启动
 - `vector` 扩展能查到
-- 项目启动时不会在 RAG 初始化阶段报数据库错误
+- 项目启动时不会在 RAG 同步阶段报数据库错误
 - 发起问题后能检索出知识库内容
 
 如果检索不到，通常是：
@@ -125,5 +117,4 @@ docker exec -e PGPASSWORD=你的密码 agentdemo-pgvector \
 - 数据没写进去
 - 分数阈值太高
 - embedding 模型和查询模型不匹配
-- pgvector 容器没起来
-
+- PostgreSQL 服务没起来
