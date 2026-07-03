@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface UserConversationMessageRepository extends JpaRepository<UserConversationMessage, Long> {
 
-    List<UserConversationMessage> findTop12ByUserIdOrderByCreatedAtDesc(String userId);
+    List<UserConversationMessage> findTop20ByUserIdOrderByCreatedAtDesc(String userId);
 }

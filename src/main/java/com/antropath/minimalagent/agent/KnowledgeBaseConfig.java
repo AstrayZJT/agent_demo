@@ -7,15 +7,18 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -85,6 +88,16 @@ public class KnowledgeBaseConfig {
     }
 
     @Bean
+    public OpenAiTokenCountEstimator tokenCountEstimator() {
+        return new OpenAiTokenCountEstimator(chatModelName);
+    }
+
+    @Bean
+    public ChatMemoryStore chatMemoryStore() {
+        return new InMemoryChatMemoryStore();
+    }
+
+    @Bean
     public PgVectorEmbeddingStore embeddingStore(EmbeddingModel embeddingModel) {
         PgVectorEmbeddingStore store = PgVectorEmbeddingStore.builder()
                 .host(pgvectorHost)
@@ -118,10 +131,16 @@ public class KnowledgeBaseConfig {
     }
 
     @Bean
-    public ChatMemoryProvider chatMemoryProvider() {
+    public ChatMemoryProvider chatMemoryProvider(OpenAiTokenCountEstimator tokenCountEstimator,
+                                                 ChatMemoryStore chatMemoryStore) {
         return memoryId -> "-1".equals(String.valueOf(memoryId))
                 ? new EphemeralChatMemory(memoryId)
-                : MessageWindowChatMemory.withMaxMessages(12);
+                : TokenWindowChatMemory.builder()
+                .id(memoryId)
+                .maxTokens(3000, tokenCountEstimator)
+                .chatMemoryStore(chatMemoryStore)
+                .alwaysKeepSystemMessageFirst(true)
+                .build();
     }
 
     @Bean("ragAssistant")
@@ -168,7 +187,7 @@ public class KnowledgeBaseConfig {
                 你是一个中文学习助手，当前工作模式是知识库问答。
                 1. 优先根据检索到的知识库内容回答。
                 2. 如果知识库没有相关信息，直接说明没有找到相关资料，不要编造。
-                3. 同一个 userId 的历史对话记忆如下：
+                3. 同一个 userId 的历史摘要与最近对话如下：
                 %s
                 4. 回答要准确、自然、简洁。
                 """.formatted(memoryContext);
@@ -181,9 +200,9 @@ public class KnowledgeBaseConfig {
                 1. 只要问题涉及事实查询、联网搜索、网页内容总结，就必须先调用工具，不能直接凭记忆回答。
                 2. 优先使用 webSearch；如果拿到结果后还需要网页正文，再调用 visitWebpage。
                 3. 如果工具结果不足以支持结论，要明确说明，不要编造。
-                3. 同一个 userId 的历史对话记忆如下：
+                4. 同一个 userId 的历史摘要与最近对话如下：
                 %s
-                4. 回答要准确、自然、简洁。
+                5. 回答要准确、自然、简洁。
                 """.formatted(memoryContext);
     }
 
