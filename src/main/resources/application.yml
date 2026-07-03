@@ -37,3 +37,10 @@ agent:
 
 rag:
   knowledge-path: knowledge
+  pgvector:
+    host: ${RAG_PGVECTOR_HOST:localhost}
+    port: ${RAG_PGVECTOR_PORT:5433}
+    database: ${RAG_PGVECTOR_DATABASE:agentdemo_rag}
+    username: ${RAG_PGVECTOR_USERNAME:postgres}
+    password: ${RAG_PGVECTOR_PASSWORD:${DB_PASSWORD:}}
+    table: ${RAG_PGVECTOR_TABLE:knowledge_embeddings}

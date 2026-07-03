@@ -19,7 +19,7 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,6 +34,24 @@ public class KnowledgeBaseConfig {
 
     @Value("${rag.knowledge-path:knowledge}")
     private String knowledgePath;
+
+    @Value("${rag.pgvector.host:localhost}")
+    private String pgvectorHost;
+
+    @Value("${rag.pgvector.port:5433}")
+    private int pgvectorPort;
+
+    @Value("${rag.pgvector.database:agentdemo_rag}")
+    private String pgvectorDatabase;
+
+    @Value("${rag.pgvector.username:postgres}")
+    private String pgvectorUsername;
+
+    @Value("${rag.pgvector.password:}")
+    private String pgvectorPassword;
+
+    @Value("${rag.pgvector.table:knowledge_embeddings}")
+    private String pgvectorTable;
 
     @Value("${langchain4j.open-ai.chat-model.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}")
     private String chatBaseUrl;
@@ -76,8 +94,17 @@ public class KnowledgeBaseConfig {
     }
 
     @Bean
-    public InMemoryEmbeddingStore<TextSegment> embeddingStore(EmbeddingModel embeddingModel) {
-        InMemoryEmbeddingStore<TextSegment> store = new InMemoryEmbeddingStore<>();
+    public PgVectorEmbeddingStore embeddingStore(EmbeddingModel embeddingModel) {
+        PgVectorEmbeddingStore store = PgVectorEmbeddingStore.builder()
+                .host(pgvectorHost)
+                .port(pgvectorPort)
+                .database(pgvectorDatabase)
+                .user(pgvectorUsername)
+                .password(pgvectorPassword)
+                .table(pgvectorTable)
+                .dimension(embeddingModel.dimension())
+                .createTable(true)
+                .build();
         Path path = Path.of(knowledgePath);
         if (Files.exists(path)) {
             List<Document> documents = FileSystemDocumentLoader.loadDocumentsRecursively(path);
@@ -95,7 +122,7 @@ public class KnowledgeBaseConfig {
 
     @Bean
     public ContentRetriever knowledgeContentRetriever(EmbeddingModel embeddingModel,
-                                                      InMemoryEmbeddingStore<TextSegment> embeddingStore) {
+                                                      PgVectorEmbeddingStore embeddingStore) {
         return EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
